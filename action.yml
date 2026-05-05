@@ -1,0 +1,189 @@
+name: Faultline
+description: >
+  Structural risk analysis for Go codebases. Scans on every PR and push,
+  posts a risk advisory comment, uploads SARIF to GitHub code scanning,
+  and optionally ingests a governance snapshot into Faultline Enterprise.
+
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  version:
+    description: 'Faultline CLI version to install (default: latest)'
+    required: false
+    default: latest
+
+  go-version:
+    description: Go version to use for installation
+    required: false
+    default: stable
+
+  patterns:
+    description: 'Go package patterns to scan (default: ./...)'
+    required: false
+    default: ./...
+
+  coverage:
+    description: Path to Go coverage profile (go test -coverprofile)
+    required: false
+    default: ''
+
+  config:
+    description: Path to faultline.yaml config file
+    required: false
+    default: ''
+
+  fail-on:
+    description: >
+      Exit non-zero on findings at this severity or above.
+      Values: none, high, critical. Default: none.
+    required: false
+    default: none
+
+  post-comment:
+    description: 'Post or update a PR risk advisory comment (default: true on pull_request)'
+    required: false
+    default: 'auto'
+
+  sarif-upload:
+    description: 'Upload SARIF results to GitHub code scanning (default: true)'
+    required: false
+    default: 'true'
+
+  compare-mode:
+    description: 'PR comparison mode. Values: auto, worktree, history'
+    required: false
+    default: auto
+
+  enterprise-url:
+    description: Faultline Enterprise API URL (e.g. https://api.gofaultline.dev)
+    required: false
+    default: ''
+
+  enterprise-token:
+    description: >
+      Faultline API token for Enterprise snapshot upload.
+      Store as a repository secret: FAULTLINE_API_TOKEN.
+    required: false
+    default: ''
+
+  enterprise-org-id:
+    description: >
+      Faultline organization ID for Enterprise snapshot upload.
+      Find at app.gofaultline.dev -> Settings.
+    required: false
+    default: ''
+
+outputs:
+  risk-summary:
+    description: JSON summary of the scan result
+    value: ${{ steps.scan.outputs.risk-summary }}
+
+  snapshot-id:
+    description: Enterprise snapshot ID (only set when Enterprise upload succeeds)
+    value: ${{ steps.upload.outputs.snapshot-id }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Install Faultline
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          go install github.com/faultline-go/faultline/cmd/faultline@latest
+        else
+          go install github.com/faultline-go/faultline/cmd/faultline@${{ inputs.version }}
+        fi
+        faultline version
+
+    - name: Build coverage flag
+      id: coverage
+      shell: bash
+      run: |
+        COVERAGE_PATH="${{ inputs.coverage }}"
+        if [ -z "$COVERAGE_PATH" ]; then
+          echo "No coverage profile supplied - scanning without coverage data"
+          echo "coverage_flag=" >> "$GITHUB_OUTPUT"
+        else
+          echo "coverage_flag=--coverage $COVERAGE_PATH" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Build config flag
+      id: config
+      shell: bash
+      run: |
+        CONFIG="${{ inputs.config }}"
+        if [ -z "$CONFIG" ]; then
+          echo "config_flag=" >> "$GITHUB_OUTPUT"
+        else
+          echo "config_flag=--config $CONFIG" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Faultline PR review
+      id: pr-review
+      if: github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        POST_FLAG=""
+        if [ "${{ inputs.post-comment }}" = "true" ] || [ "${{ inputs.post-comment }}" = "auto" ]; then
+          POST_FLAG="--post"
+        fi
+
+        SARIF_FLAG=""
+        if [ "${{ inputs.sarif-upload }}" = "true" ]; then
+          SARIF_FLAG="--sarif-out faultline-pr.sarif"
+        fi
+
+        faultline pr review \
+          --compare-mode ${{ inputs.compare-mode }} \
+          --fail-on ${{ inputs.fail-on }} \
+          $POST_FLAG \
+          $SARIF_FLAG \
+          ${{ steps.config.outputs.config_flag }}
+
+    - name: Faultline scan
+      id: scan
+      if: github.event_name != 'pull_request'
+      shell: bash
+      run: |
+        ENTERPRISE_FLAGS=""
+        if [ -n "${{ inputs.enterprise-url }}" ] && \
+           [ -n "${{ inputs.enterprise-token }}" ] && \
+           [ -n "${{ inputs.enterprise-org-id }}" ]; then
+          ENTERPRISE_FLAGS="--enterprise-url ${{ inputs.enterprise-url }} \
+            --enterprise-token ${{ inputs.enterprise-token }} \
+            --enterprise-org-id ${{ inputs.enterprise-org-id }}"
+        fi
+
+        faultline scan ${{ inputs.patterns }} \
+          --format sarif \
+          --out faultline.sarif \
+          --fail-on ${{ inputs.fail-on }} \
+          ${{ steps.coverage.outputs.coverage_flag }} \
+          ${{ steps.config.outputs.config_flag }} \
+          $ENTERPRISE_FLAGS
+
+        echo "risk-summary=" >> "$GITHUB_OUTPUT"
+
+    - name: Expose Enterprise upload output
+      id: upload
+      shell: bash
+      run: echo "snapshot-id=" >> "$GITHUB_OUTPUT"
+
+    - name: Upload SARIF to GitHub code scanning
+      if: >
+        inputs.sarif-upload == 'true' &&
+        (github.event_name != 'pull_request' || steps.pr-review.outcome == 'success' || steps.pr-review.outcome == 'failure')
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ github.event_name == 'pull_request' && 'faultline-pr.sarif' || 'faultline.sarif' }}
+        category: faultline
+      continue-on-error: true
