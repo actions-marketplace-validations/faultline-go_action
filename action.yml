@@ -147,6 +147,7 @@ runs:
           --fail-on ${{ inputs.fail-on }} \
           $POST_FLAG \
           $SARIF_FLAG \
+          ${{ steps.coverage.outputs.coverage_flag }} \
           ${{ steps.config.outputs.config_flag }}
 
     - name: Faultline scan
@@ -163,20 +164,26 @@ runs:
             --enterprise-org-id ${{ inputs.enterprise-org-id }}"
         fi
 
+        set -o pipefail
         faultline scan ${{ inputs.patterns }} \
           --format sarif \
           --out faultline.sarif \
           --fail-on ${{ inputs.fail-on }} \
           ${{ steps.coverage.outputs.coverage_flag }} \
           ${{ steps.config.outputs.config_flag }} \
-          $ENTERPRISE_FLAGS
+          $ENTERPRISE_FLAGS 2>&1 | tee faultline-scan.log
 
         echo "risk-summary=" >> "$GITHUB_OUTPUT"
 
     - name: Expose Enterprise upload output
       id: upload
       shell: bash
-      run: echo "snapshot-id=" >> "$GITHUB_OUTPUT"
+      run: |
+        SNAPSHOT_ID=""
+        if [ -f faultline-scan.log ]; then
+          SNAPSHOT_ID="$(sed -n 's/.*enterprise: snapshot uploaded (id: \([^,)]*\).*/\1/p' faultline-scan.log | tail -1)"
+        fi
+        echo "snapshot-id=${SNAPSHOT_ID}" >> "$GITHUB_OUTPUT"
 
     - name: Upload SARIF to GitHub code scanning
       if: >
