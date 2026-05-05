@@ -26,7 +26,7 @@ jobs:
       pull-requests: write
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0      # Required: Faultline needs git history
 
@@ -39,7 +39,7 @@ SARIF to GitHub code scanning. On pushes to main, it scans and uploads SARIF.
 ## With test coverage
 
 ```yaml
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
 
