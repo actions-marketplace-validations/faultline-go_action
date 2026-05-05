@@ -84,6 +84,18 @@ trends, owner scorecards, policy compliance, and audit evidence across all repos
 Get your org ID at [app.gofaultline.dev](https://app.gofaultline.dev) -> Settings.
 Create an API token at Settings -> API Tokens.
 
+## 15-minute Enterprise activation path
+
+1. Start a trial at [app.gofaultline.dev](https://app.gofaultline.dev).
+2. Create an API token and save it as `FAULTLINE_API_TOKEN`.
+3. Add the Action with `enterprise-url`, `enterprise-token`, and `enterprise-org-id`.
+4. Merge or run the workflow on one production Go repository.
+5. Open the Enterprise dashboard and review the first non-demo snapshot.
+
+That first snapshot is the activation milestone. From there, teams can enable
+weekly digests, invite owners, review suppression debt, export audit evidence,
+and expand coverage to the repositories that carry production risk.
+
 ## With architecture boundaries
 
 ```yaml
