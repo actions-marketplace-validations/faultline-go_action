@@ -1,8 +1,5 @@
-name: Faultline
-description: >
-  Structural risk analysis for Go codebases. Scans on every PR and push,
-  posts a risk advisory comment, uploads SARIF to GitHub code scanning,
-  and optionally ingests a governance snapshot into Faultline Enterprise.
+name: Faultline Go Risk Scan
+description: Go structural risk scanning with PR comments, SARIF, and optional Faultline Enterprise snapshot upload.
 
 branding:
   icon: shield
