@@ -61,7 +61,7 @@ inputs:
   enterprise-token:
     description: >
       Faultline API token for Enterprise snapshot upload.
-      Store as a repository secret: FAULTLINE_API_TOKEN.
+      Pass from a repository secret or Actions variable named FAULTLINE_API_TOKEN.
     required: false
     default: ''
 

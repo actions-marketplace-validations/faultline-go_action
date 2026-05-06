@@ -67,13 +67,15 @@ Existing findings are not flagged - only regressions introduced by the PR.
 
 ## With Faultline Enterprise
 
-Store your API token as a repository secret named `FAULTLINE_API_TOKEN`:
+Store your API token as a repository secret named `FAULTLINE_API_TOKEN`. Existing
+pilot installs that use a repository or organization Actions variable with the
+same name can use the fallback expression below:
 
 ```yaml
       - uses: faultline-go/action@v1
         with:
           enterprise-url: https://api.gofaultline.dev
-          enterprise-token: ${{ secrets.FAULTLINE_API_TOKEN }}
+          enterprise-token: ${{ secrets.FAULTLINE_API_TOKEN || vars.FAULTLINE_API_TOKEN }}
           enterprise-org-id: YOUR_ORG_ID
 ```
 
@@ -88,7 +90,7 @@ Create an API token at Settings -> API Tokens.
 ## 15-minute Enterprise activation path
 
 1. Start a trial at [app.gofaultline.dev](https://app.gofaultline.dev).
-2. Create an API token and save it as `FAULTLINE_API_TOKEN`.
+2. Create an API token and save it as `FAULTLINE_API_TOKEN`, preferably as a GitHub secret.
 3. Add the Action with `enterprise-url`, `enterprise-token`, and `enterprise-org-id`.
 4. Merge or run the workflow on one production Go repository.
 5. Open the Enterprise dashboard and review the first non-demo snapshot.
