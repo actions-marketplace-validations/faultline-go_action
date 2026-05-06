@@ -139,13 +139,24 @@ runs:
           SARIF_FLAG="--sarif-out faultline-pr.sarif"
         fi
 
+        ENTERPRISE_FLAGS=""
+        if [ -n "${{ inputs.enterprise-url }}" ] && \
+           [ -n "${{ inputs.enterprise-token }}" ] && \
+           [ -n "${{ inputs.enterprise-org-id }}" ]; then
+          ENTERPRISE_FLAGS="--enterprise-url ${{ inputs.enterprise-url }} \
+            --enterprise-token ${{ inputs.enterprise-token }} \
+            --enterprise-org-id ${{ inputs.enterprise-org-id }}"
+        fi
+
+        set -o pipefail
         faultline pr review \
           --compare-mode ${{ inputs.compare-mode }} \
           --fail-on ${{ inputs.fail-on }} \
           $POST_FLAG \
           $SARIF_FLAG \
           ${{ steps.coverage.outputs.coverage_flag }} \
-          ${{ steps.config.outputs.config_flag }}
+          ${{ steps.config.outputs.config_flag }} \
+          $ENTERPRISE_FLAGS 2>&1 | tee faultline-pr.log
 
     - name: Faultline scan
       id: scan
@@ -179,6 +190,9 @@ runs:
         SNAPSHOT_ID=""
         if [ -f faultline-scan.log ]; then
           SNAPSHOT_ID="$(sed -n 's/.*enterprise: snapshot uploaded (id: \([^,)]*\).*/\1/p' faultline-scan.log | tail -1)"
+        fi
+        if [ -z "$SNAPSHOT_ID" ] && [ -f faultline-pr.log ]; then
+          SNAPSHOT_ID="$(sed -n 's/.*enterprise: snapshot uploaded (id: \([^,)]*\).*/\1/p' faultline-pr.log | tail -1)"
         fi
         echo "snapshot-id=${SNAPSHOT_ID}" >> "$GITHUB_OUTPUT"
 

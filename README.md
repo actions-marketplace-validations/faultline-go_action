@@ -78,8 +78,9 @@ Store your API token as a repository secret named `FAULTLINE_API_TOKEN`:
 ```
 
 When Enterprise credentials are set, Faultline automatically uploads a governance
-snapshot after every scan. The Enterprise dashboard tracks portfolio-level risk
-trends, owner scorecards, policy compliance, and audit evidence across all repos.
+snapshot from pull request reviews and push scans. The Enterprise dashboard
+tracks portfolio-level risk trends, owner scorecards, policy compliance, and
+audit evidence across all repos.
 
 Get your org ID at [app.gofaultline.dev](https://app.gofaultline.dev) -> Settings.
 Create an API token at Settings -> API Tokens.
@@ -160,8 +161,9 @@ packages against the base branch, generates a risk advisory comment, and produce
 SARIF for inline code annotations. Only packages changed in the PR are highlighted.
 
 On pushes to main, Faultline runs `faultline scan ./...` which produces a full
-snapshot of the repository's risk posture. If Enterprise credentials are set, the
-snapshot is uploaded to track trend data over time.
+snapshot of the repository's risk posture. If Enterprise credentials are set,
+pull request review snapshots and push snapshots are uploaded to track trend data
+over time.
 
 Faultline is local-first and source-free. No source code leaves your runner.
 The scanner reads git history, go.mod, and CODEOWNERS. It does not upload source
